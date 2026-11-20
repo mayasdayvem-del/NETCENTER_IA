@@ -1,1 +1,50 @@
-name: Set up JDK 17, uses actions/setup-java@v3,with distribution temurin, java-version 17. name: Grant execute permission, run: chmod +x gradlew, name: Build with Gradle, run: ./gradlew assembleDebug
+name: Build NETCENTER IA APK
+
+on:
+  push:
+    branches: [principal]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Descomprimir proyecto Android
+        run: |
+          mkdir -p project
+          unzip -q NETCENTER_IA_proyecto_android.zip -d project
+
+      - name: Localizar proyecto
+        id: locate
+        run: |
+          FILE=$(find project -name settings.gradle.kts -print -quit)
+          if [ -z "$FILE" ]; then
+            echo "No se encontró settings.gradle.kts"
+            exit 1
+          fi
+          echo "dir=$(dirname "$FILE")" >> "$GITHUB_OUTPUT"
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compilar APK
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: gradle assembleDebug
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NETCENTER-IA-APK
+          path: '**/build/outputs/apk/debug/*.apk'
